@@ -1,0 +1,10 @@
+{
+  "name": "ai-4k-enhancer",
+  "version": "1.0.0",
+  "description": "AI-powered image enhancement to 4K using Claude + Topaz",
+  "private": true,
+  "dependencies": {},
+  "engines": {
+    "node": ">=18"
+  }
+}
