@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enhance to 4K — AI Image Upscaler</title>
+<meta name="description" content="Free AI-powered image enhancement to 4K. One image per day, no account needed.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: rgba(0,0,0,0.09);
+    --border-med: rgba(0,0,0,0.16);
+    --text: #1a1a18;
+    --text2: #6b6a65;
+    --text3: #9e9d97;
+    --accent: #1a1a18;
+    --accent-bg: #eef3fb;
+    --accent-text: #1a4fa0;
+    --info-dot: #3b82f6;
+    --success: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #18181a;
+      --surface: #222225;
+      --surface2: #2a2a2e;
+      --border: rgba(255,255,255,0.08);
+      --border-med: rgba(255,255,255,0.15);
+      --text: #f0efe9;
+      --text2: #9e9d97;
+      --text3: #6b6a65;
+      --accent: #f0efe9;
+      --accent-bg: #1e2d45;
+      --accent-text: #93c5fd;
+      --info-dot: #60a5fa;
+    }
+  }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2.5rem 1rem 4rem;
+  }
+
+  .container { max-width: 820px; margin: 0 auto; }
+
+  /* ── Header ── */
+  .header { margin-bottom: 2.5rem; }
+  .header-top { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 34px;
+    font-weight: 300;
+    letter-spacing: -0.5px;
+  }
+
+  .badge {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 4px;
+    background: var(--accent-bg);
+    color: var(--accent-text);
+  }
+
+  .header-sub { font-size: 12px; color: var(--text2); }
+
+  /* ── Quota bar ── */
+  .quota-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border: 0.5px solid var(--border-med);
+    border-radius: 10px;
+    background: var(--surface);
+    margin-bottom: 1.5rem;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .quota-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    flex-shrink: 0;
+  }
+
+  .quota-dot.used { background: var(--danger); }
+
+  /* ── Drop zone ── */
+  .drop-zone {
+    border: 1.5px dashed var(--border-med);
+    border-radius: 14px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+    margin-bottom: 1.5rem;
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--info-dot);
+    background: var(--accent-bg);
+  }
+
+  .drop-zone.disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .drop-icon {
+    width: 52px; height: 52px;
+    margin: 0 auto 1rem;
+    border: 1px solid var(--border-med);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface2);
+  }
+
+  .drop-icon svg { opacity: 0.45; }
+  .drop-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  .drop-sub { font-size: 12px; color: var(--text2); }
+  #file-input { display: none; }
+
+  /* ── Controls ── */
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.5rem; }
+  @media (max-width: 480px) { .controls { grid-template-columns: 1fr; } }
+
+  .control-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+  }
+
+  .control-label {
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .seg-control { display: flex; gap: 4px; }
+
+  .seg-btn {
+    flex: 1;
+    padding: 6px 4px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    border: 0.5px solid var(--border-med);
+    border-radius: 6px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text2);
+    transition: all 0.15s;
+  }
+
+  .seg-btn.active {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+
+  /* ── Progress ── */
+  .progress-bar-wrap { display: none; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 1rem; }
+  .progress-bar-wrap.show { display: block; }
+  .progress-bar { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.4s ease; width: 0%; }
+
+  /* ── Enhance button ── */
+  .enhance-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    border: 1.5px solid var(--accent);
+    border-radius: 10px;
+    cursor: pointer;
+    background: var(--accent);
+    color: var(--bg);
+    transition: all 0.2s;
+    margin-bottom: 1.5rem;
+  }
+
+  .enhance-btn:hover { opacity: 0.82; transform: translateY(-1px); }
+  .enhance-btn:active { transform: translateY(0); }
+  .enhance-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+  /* ── Preview grid ── */
+  .preview-grid { display: none; gap: 12px; margin-bottom: 1.5rem; }
+  .preview-grid.show { display: grid; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 500px) { .preview-grid.show { grid-template-columns: 1fr; } }
+
+  .preview-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; overflow: hidden; }
+
+  .preview-header {
+    padding: 8px 12px;
+    border-bottom: 0.5px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  .preview-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text2); }
+  .preview-res { font-size: 10px; color: var(--text3); }
+
+  .preview-img-wrap {
+    aspect-ratio: 16/10;
+    overflow: hidden;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .preview-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* ── Compare slider ── */
+  .compare-hint { display: none; font-size: 11px; color: var(--text2); text-align: center; margin-bottom: 8px; letter-spacing: 0.5px; }
+  .compare-hint.show { display: block; }
+
+  .compare-wrap {
+    position: relative; overflow: hidden; cursor: col-resize; display: none;
+    aspect-ratio: 16/9; border-radius: 12px; border: 0.5px solid var(--border);
+    margin-bottom: 1.5rem; user-select: none;
+  }
+  .compare-wrap.show { display: block; }
+  .compare-wrap img { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; }
+  .compare-after { clip-path: inset(0 0 0 50%); }
+  .compare-divider { position: absolute; top:0; bottom:0; width: 2px; background: white; left: 50%; transform: translateX(-50%); pointer-events: none; box-shadow: 0 0 8px rgba(0,0,0,0.35); }
+  .compare-handle {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 36px; height: 36px;
+    background: white; border-radius: 50%;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .compare-label-left, .compare-label-right {
+    position: absolute; bottom: 10px;
+    font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    background: rgba(0,0,0,0.5); color: white;
+    padding: 3px 8px; border-radius: 4px; pointer-events: none;
+  }
+  .compare-label-left { left: 12px; }
+  .compare-label-right { right: 12px; }
+
+  /* ── Analysis panel ── */
+  .analysis-panel { display: none; background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 1.5rem; }
+  .analysis-panel.show { display: block; }
+
+  .analysis-header {
+    padding: 10px 16px;
+    border-bottom: 0.5px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  .analysis-title { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; font-weight: 500; }
+
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--info-dot); display: inline-block; margin-right: 6px; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+
+  .analysis-body { padding: 1rem 1.25rem; }
+
+  .analysis-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1rem; }
+  @media (max-width: 460px) { .analysis-grid { grid-template-columns: 1fr 1fr; } }
+
+  .stat-card { background: var(--surface2); border-radius: 8px; padding: 10px 12px; }
+  .stat-label { font-size: 10px; color: var(--text2); margin-bottom: 4px; letter-spacing: 0.5px; }
+  .stat-value { font-size: 16px; font-weight: 500; }
+
+  .enhancements-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .enhancement-item { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--text2); line-height: 1.55; }
+  .enhancement-bullet { width: 4px; height: 4px; border-radius: 50%; background: var(--info-dot); margin-top: 6px; flex-shrink: 0; }
+
+  .rec-note { margin-top: 1rem; padding: 10px 12px; background: var(--accent-bg); border-radius: 8px; font-size: 12px; color: var(--accent-text); line-height: 1.5; }
+
+  /* ── Error banner ── */
+  .error-banner {
+    display: none;
+    padding: 12px 16px;
+    background: #fee2e2;
+    color: #991b1b;
+    border-radius: 10px;
+    font-size: 12px;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+  }
+  @media (prefers-color-scheme: dark) { .error-banner { background: #450a0a; color: #fca5a5; } }
+  .error-banner.show { display: block; }
+
+  /* ── Limit reached ── */
+  .limit-banner {
+    display: none;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border-med);
+    border-radius: 12px;
+    font-size: 13px;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    line-height: 1.7;
+  }
+  .limit-banner.show { display: block; }
+  .limit-banner strong { font-weight: 500; display: block; margin-bottom: 4px; }
+  .limit-banner span { font-size: 11px; color: var(--text2); }
+
+  /* ── Download ── */
+  .download-btn {
+    width: 100%;
+    padding: 11px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    border: 0.5px solid var(--border-med);
+    border-radius: 8px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text);
+    transition: all 0.15s;
+    display: none;
+  }
+  .download-btn:hover { background: var(--surface2); }
+  .download-btn.show { display: block; }
+
+  /* ── Footer ── */
+  .footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 0.5px solid var(--border); font-size: 11px; color: var(--text3); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+  .placeholder-svg { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; opacity: 0.2; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-top">
+      <h1>Enhance to 4K</h1>
+      <span class="badge">Free · AI-Powered</span>
+    </div>
+    <div class="header-sub">Upload any image — Claude analyzes and enhances it. 1 image per day, no account needed.</div>
+  </div>
+
+  <div class="quota-bar" id="quota-bar">
+    <div class="quota-dot" id="quota-dot"></div>
+    <span id="quota-text">1 enhancement available today</span>
+  </div>
+
+  <div class="drop-zone" id="drop-zone">
+    <div class="drop-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <div class="drop-title">Drop your image here</div>
+    <div class="drop-sub">JPG, PNG, WEBP — up to 10MB · click to browse</div>
+    <input type="file" id="file-input" accept="image/*">
+  </div>
+
+  <div class="controls">
+    <div class="control-card">
+      <span class="control-label">Target resolution</span>
+      <div class="seg-control" id="res-ctrl">
+        <button class="seg-btn" data-val="2K">2K</button>
+        <button class="seg-btn active" data-val="4K">4K</button>
+        <button class="seg-btn" data-val="8K">8K</button>
+      </div>
+    </div>
+    <div class="control-card">
+      <span class="control-label">Enhancement mode</span>
+      <div class="seg-control" id="mode-ctrl">
+        <button class="seg-btn active" data-val="auto">Auto</button>
+        <button class="seg-btn" data-val="photo">Photo</button>
+        <button class="seg-btn" data-val="art">Art</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap" id="progress-wrap">
+    <div class="progress-bar" id="progress-bar"></div>
+  </div>
+
+  <div class="error-banner" id="error-banner"></div>
+  <div class="limit-banner" id="limit-banner">
+    <strong>Daily limit reached</strong>
+    <span id="limit-sub">You've used your 1 free enhancement today. Come back tomorrow!</span>
+  </div>
+
+  <button class="enhance-btn" id="enhance-btn" disabled>Analyze &amp; enhance image</button>
+
+  <div class="preview-grid" id="preview-grid">
+    <div class="preview-card">
+      <div class="preview-header">
+        <span class="preview-label">Original</span>
+        <span class="preview-res" id="orig-res">—</span>
+      </div>
+      <div class="preview-img-wrap">
+        <img id="orig-img" src="" alt="Original image">
+      </div>
+    </div>
+    <div class="preview-card">
+      <div class="preview-header">
+        <span class="preview-label">Enhanced</span>
+        <span class="preview-res" id="enhanced-res">Ready to process</span>
+      </div>
+      <div class="preview-img-wrap" id="enhanced-wrap">
+        <div class="placeholder-svg">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="compare-hint" id="compare-hint">← drag to compare before / after →</div>
+  <div class="compare-wrap" id="compare-wrap">
+    <img id="cmp-before" src="" alt="Before">
+    <img id="cmp-after" src="" alt="After" class="compare-after">
+    <div class="compare-divider" id="cmp-divider"></div>
+    <div class="compare-handle" id="cmp-handle">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2.5">
+        <polyline points="9 18 3 12 9 6"/><polyline points="15 6 21 12 15 18"/>
+      </svg>
+    </div>
+    <span class="compare-label-left">Before</span>
+    <span class="compare-label-right">After</span>
+  </div>
+
+  <div class="analysis-panel" id="analysis-panel">
+    <div class="analysis-header">
+      <span class="analysis-title"><span class="status-dot" id="status-dot"></span>AI Analysis</span>
+      <span class="preview-res" id="analysis-status">Processing...</span>
+    </div>
+    <div class="analysis-body">
+      <div class="analysis-grid">
+        <div class="stat-card"><div class="stat-label">Quality score</div><div class="stat-value" id="stat-quality">—</div></div>
+        <div class="stat-card"><div class="stat-label">Noise level</div><div class="stat-value" id="stat-noise">—</div></div>
+        <div class="stat-card"><div class="stat-label">Sharpness</div><div class="stat-value" id="stat-sharp">—</div></div>
+      </div>
+      <div class="enhancements-list" id="enhancements-list"></div>
+      <div class="rec-note" id="rec-note" style="display:none"></div>
+    </div>
+  </div>
+
+  <button class="download-btn" id="download-btn">Download enhanced image</button>
+
+  <div class="footer">
+    <span>Powered by Claude AI · 1 free image/day per visitor</span>
+    <span>Resets at midnight UTC</span>
+  </div>
+
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const dropZone = $('drop-zone');
+const fileInput = $('file-input');
+const enhanceBtn = $('enhance-btn');
+const previewGrid = $('preview-grid');
+const origImg = $('orig-img');
+const origRes = $('orig-res');
+const enhancedRes = $('enhanced-res');
+const enhancedWrap = $('enhanced-wrap');
+const analysisPanel = $('analysis-panel');
+const analysisStatus = $('analysis-status');
+const statusDot = $('status-dot');
+const progressWrap = $('progress-wrap');
+const progressBar = $('progress-bar');
+const downloadBtn = $('download-btn');
+const enhancementsList = $('enhancements-list');
+const recNote = $('rec-note');
+const compareWrap = $('compare-wrap');
+const compareHint = $('compare-hint');
+const cmpBefore = $('cmp-before');
+const cmpAfter = $('cmp-after');
+const cmpDivider = $('cmp-divider');
+const cmpHandle = $('cmp-handle');
+const errorBanner = $('error-banner');
+const limitBanner = $('limit-banner');
+const quotaDot = $('quota-dot');
+const quotaText = $('quota-text');
+
+let currentFile = null;
+let currentBase64 = null;
+let selectedRes = '4K';
+let selectedMode = 'auto';
+let enhancedDataUrl = null;
+let limitReached = false;
+
+document.querySelectorAll('#res-ctrl .seg-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#res-ctrl .seg-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedRes = btn.dataset.val;
+  });
+});
+
+document.querySelectorAll('#mode-ctrl .seg-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#mode-ctrl .seg-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedMode = btn.dataset.val;
+  });
+});
+
+dropZone.addEventListener('click', () => { if (!limitReached) fileInput.click(); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); if (!limitReached) dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if (limitReached) return;
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) loadFile(f);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+function loadFile(file) {
+  currentFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    currentBase64 = e.target.result.split(',')[1];
+    origImg.src = e.target.result;
+    const img = new Image();
+    img.onload = () => { origRes.textContent = img.width + ' × ' + img.height; };
+    img.src = e.target.result;
+    previewGrid.classList.add('show');
+    enhancedRes.textContent = 'Ready to process';
+    enhancedWrap.innerHTML = '<div class="placeholder-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>';
+    enhanceBtn.disabled = false;
+    analysisPanel.classList.remove('show');
+    compareWrap.classList.remove('show');
+    compareHint.classList.remove('show');
+    downloadBtn.classList.remove('show');
+    errorBanner.classList.remove('show');
+    enhancedDataUrl = null;
+  };
+  reader.readAsDataURL(file);
+}
+
+function setProgress(pct) { progressBar.style.width = pct + '%'; }
+
+function showLimit(hoursLeft) {
+  limitReached = true;
+  quotaDot.classList.add('used');
+  quotaText.textContent = '0 enhancements remaining today';
+  limitBanner.classList.add('show');
+  $('limit-sub').textContent = hoursLeft
+    ? `You've used your 1 free enhancement today. Resets in ~${hoursLeft}h.`
+    : `You've used your 1 free enhancement today. Come back tomorrow!`;
+  dropZone.classList.add('disabled');
+  enhanceBtn.disabled = true;
+}
+
+function showResult(enhancedImageBase64, enhancedMediaType, result) {
+  const enhancedDataUrlFull = `data:${enhancedMediaType || 'image/jpeg'};base64,${enhancedImageBase64}`;
+  enhancedDataUrl = enhancedDataUrlFull;
+
+  if (result) {
+    $('stat-quality').textContent = result.quality_score + '/10';
+    $('stat-noise').textContent = result.noise_level;
+    $('stat-sharp').textContent = result.sharpness;
+    enhancementsList.innerHTML = '';
+    (result.enhancements_applied || []).forEach(e => {
+      const item = document.createElement('div');
+      item.className = 'enhancement-item';
+      item.innerHTML = '<div class="enhancement-bullet"></div><span>' + e + '</span>';
+      enhancementsList.appendChild(item);
+    });
+    if (result.upscale_recommendation) {
+      recNote.textContent = result.upscale_recommendation;
+      recNote.style.display = 'block';
+    }
+  }
+
+  const resMap = { '2K': '2560×1440', '4K': '3840×2160', '8K': '7680×4320' };
+  enhancedRes.textContent = (result && result.target_resolution) || resMap[selectedRes];
+  analysisStatus.textContent = 'Complete';
+  statusDot.style.animation = 'none';
+  statusDot.style.background = '#22c55e';
+
+  enhancedWrap.innerHTML = '';
+  const enhImg = document.createElement('img');
+  enhImg.src = enhancedDataUrlFull;
+  enhImg.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+  enhancedWrap.appendChild(enhImg);
+
+  cmpBefore.src = origImg.src;
+  cmpAfter.src = enhancedDataUrlFull;
+  cmpAfter.style.filter = 'none';
+  compareWrap.classList.add('show');
+  compareHint.classList.add('show');
+  downloadBtn.classList.add('show');
+  quotaDot.classList.add('used');
+  quotaText.textContent = '0 enhancements remaining today';
+  setProgress(100);
+  setTimeout(() => { progressWrap.classList.remove('show'); setProgress(0); }, 900);
+  enhanceBtn.disabled = false;
+}
+
+async function pollForResult(predictionId, result) {
+  const maxAttempts = 60; // 5 min max
+
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise(r => setTimeout(r, 5000));
+    const elapsed = (i + 1) * 5;
+    const pct = Math.min(92, 45 + i * 1.5);
+    setProgress(pct);
+    analysisStatus.textContent = `Upscaling with Topaz AI... (${elapsed}s)`;
+
+    const res = await fetch('/api/enhance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'poll', predictionId }),
+    });
+    const body = await res.json();
+
+    if (body.status === 'succeeded') {
+      showResult(body.enhancedImageBase64, body.enhancedMediaType, result);
+      return;
+    }
+    if (body.status === 'failed') {
+      throw new Error(body.error || 'Upscale failed');
+    }
+  }
+  throw new Error('Topaz is taking unusually long. Check replicate.com/predictions to see if it completed.');
+}
+
+async function runEnhancement() {
+  if (!currentBase64 || limitReached) return;
+
+  enhanceBtn.disabled = true;
+  downloadBtn.classList.remove('show');
+  compareWrap.classList.remove('show');
+  compareHint.classList.remove('show');
+  errorBanner.classList.remove('show');
+  progressWrap.classList.add('show');
+  setProgress(12);
+  analysisPanel.classList.add('show');
+  analysisStatus.textContent = 'Analyzing image...';
+  statusDot.style.background = '#f59e0b';
+  statusDot.style.animation = 'pulse 1.5s infinite';
+  $('stat-quality').textContent = '—';
+  $('stat-noise').textContent = '—';
+  $('stat-sharp').textContent = '—';
+  enhancementsList.innerHTML = '';
+  recNote.style.display = 'none';
+  enhancedRes.textContent = 'Processing...';
+
+  try {
+    setProgress(25);
+    const response = await fetch('/api/enhance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'start',
+        imageBase64: currentBase64,
+        mediaType: currentFile.type || 'image/jpeg',
+        resolution: selectedRes,
+        mode: selectedMode,
+      }),
+    });
+
+    if (response.status === 429) {
+      const body = await response.json();
+      showLimit(body.resetsIn);
+      progressWrap.classList.remove('show');
+      analysisPanel.classList.remove('show');
+      enhancedRes.textContent = '—';
+      return;
+    }
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.message || 'Server error — please try again.');
+    }
+
+    const startBody = await response.json();
+    const { predictionId, result } = startBody;
+    console.log('Start response:', JSON.stringify(startBody).slice(0, 200));
+    setProgress(40);
+    analysisStatus.textContent = 'Upscaling with Topaz AI...';
+
+    // Show Claude analysis immediately while Topaz runs
+    if (result) {
+      $('stat-quality').textContent = result.quality_score + '/10';
+      $('stat-noise').textContent = result.noise_level;
+      $('stat-sharp').textContent = result.sharpness;
+      (result.enhancements_applied || []).forEach(e => {
+        const item = document.createElement('div');
+        item.className = 'enhancement-item';
+        item.innerHTML = '<div class="enhancement-bullet"></div><span>' + e + '</span>';
+        enhancementsList.appendChild(item);
+      });
+      if (result.upscale_recommendation) {
+        recNote.textContent = result.upscale_recommendation;
+        recNote.style.display = 'block';
+      }
+    }
+
+    await pollForResult(predictionId, result);
+
+  } catch (err) {
+    analysisStatus.textContent = 'Error';
+    statusDot.style.background = '#ef4444';
+    statusDot.style.animation = 'none';
+    enhancedRes.textContent = 'Failed';
+    errorBanner.textContent = err.message || 'Something went wrong. Please try again.';
+    errorBanner.classList.add('show');
+    progressWrap.classList.remove('show');
+    enhanceBtn.disabled = false;
+  }
+}
+
+enhanceBtn.addEventListener('click', runEnhancement);
+
+downloadBtn.addEventListener('click', () => {
+  if (!enhancedDataUrl) return;
+  const a = document.createElement('a');
+  a.href = enhancedDataUrl;
+  a.download = 'enhanced-' + selectedRes + '-' + (currentFile?.name || 'image.jpg');
+  a.click();
+});
+
+// Compare slider
+let dragging = false;
+compareWrap.addEventListener('mousedown', e => { dragging = true; moveSlider(e); });
+compareWrap.addEventListener('touchstart', e => { dragging = true; moveSlider(e.touches[0]); }, { passive: true });
+window.addEventListener('mouseup', () => { dragging = false; });
+window.addEventListener('touchend', () => { dragging = false; });
+window.addEventListener('mousemove', e => { if (dragging) moveSlider(e); });
+window.addEventListener('touchmove', e => { if (dragging) moveSlider(e.touches[0]); }, { passive: true });
+
+function moveSlider(e) {
+  const rect = compareWrap.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)).toFixed(1);
+  cmpAfter.style.clipPath = `inset(0 0 0 ${pct}%)`;
+  cmpDivider.style.left = pct + '%';
+  cmpHandle.style.left = pct + '%';
+  cmpHandle.style.transform = 'translate(-50%, -50%)';
+}
+</script>
+</body>
+</html>
