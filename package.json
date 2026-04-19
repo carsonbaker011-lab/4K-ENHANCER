@@ -1,0 +1,8 @@
+{
+  "name": "adgen",
+  "version": "1.0.0",
+  "description": "AI ad generator — paste a URL, get 3 ads",
+  "private": true,
+  "dependencies": {},
+  "engines": { "node": ">=18" }
+}
